@@ -1,28 +1,40 @@
 {
-  "name": "serverless-scraper",
-  "version": "0.1.0",
-  "bin": {
-    "serverless-scraper": "bin/serverless-scraper.js"
-  },
-  "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
-    "test": "jest",
-    "cdk": "cdk"
-  },
-  "devDependencies": {
-    "@types/jest": "^27.5.2",
-    "@types/node": "10.17.27",
-    "@types/prettier": "2.6.0",
-    "jest": "^27.5.1",
-    "ts-jest": "^27.1.4",
-    "aws-cdk": "2.50.0",
-    "ts-node": "^10.9.1",
-    "typescript": "~3.9.7"
-  },
-  "dependencies": {
-    "aws-cdk-lib": "2.50.0",
-    "constructs": "^10.0.0",
-    "source-map-support": "^0.5.21"
-  }
+    "name": "serverless-scraper",
+    "version": "0.1.0",
+    "bin": {
+        "serverless-scraper": "bin/serverless-scraper.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "watch": "tsc -w",
+        "test": "jest",
+        "cdk": "cdk",
+        "cdk:watch": "cdk watch",
+        "cdk:hotswap": "cdk deploy --hotswap",
+        "cdk:sd": "cdk synth && cdk deploy"
+    },
+    "devDependencies": {
+        "@types/aws-lambda": "^8.10.108",
+        "@types/jest": "^27.5.2",
+        "@types/node": "^10.17.27",
+        "@types/prettier": "2.6.0",
+        "aws-cdk": "2.50.0",
+        "esbuild": "^0.15.13",
+        "jest": "^27.5.1",
+        "ts-jest": "^27.1.4",
+        "ts-node": "^10.9.1",
+        "typescript": "~3.9.7"
+    },
+    "dependencies": {
+        "@slack/web-api": "^6.8.1",
+        "@sparticuz/chromium": "^108.0.1",
+        "aws-cdk-lib": "2.50.0",
+        "aws-lambda": "^1.0.7",
+        "aws-sdk": "^2.1252.0",
+        "constructs": "^10.0.0",
+        "date-fns": "^2.24.0",
+        "dotenv": "^16.0.3",
+        "puppeteer-core": "^19.2.2",
+        "source-map-support": "^0.5.21"
+    }
 }
