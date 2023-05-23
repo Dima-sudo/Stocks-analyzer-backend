@@ -12,7 +12,7 @@ export enum EventNames {
 
 export enum Timeouts {
     STOCKS_QUEUE_VISIBILITY_TIMEOUT_SECONDS = 300,
-    LAMBDA_TIMEOUT_MINUTES = 2,
+    LAMBDA_TIMEOUT_MINUTES = 1,
 }
 
 export enum CloudWatch {

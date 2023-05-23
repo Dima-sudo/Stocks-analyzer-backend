@@ -1,7 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
-import * as sns from 'aws-cdk-lib/aws-sns';
-import * as subs from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
@@ -18,15 +16,18 @@ export class ServerlessScraperStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props);
 
-        const stocksTopic = new sns.Topic(this, ResourceNames.STOCKS_TOPIC);
-
-        const stocksQueue = new sqs.Queue(this, ResourceNames.STOCKS_QUEUE, {
-            visibilityTimeout: cdk.Duration.seconds(
-                Timeouts.STOCKS_QUEUE_VISIBILITY_TIMEOUT_SECONDS
-            ),
-        });
-
-        stocksTopic.addSubscription(new subs.SqsSubscription(stocksQueue));
+        const scrapedCompanyDataQueue = new sqs.Queue(
+            this,
+            ResourceNames.STOCKS_QUEUE,
+            {
+                fifo: true,
+                queueName: `${ResourceNames.STOCKS_QUEUE}.fifo`,
+                contentBasedDeduplication: true, // Optional: Enables content-based deduplication
+                visibilityTimeout: cdk.Duration.seconds(
+                    Timeouts.STOCKS_QUEUE_VISIBILITY_TIMEOUT_SECONDS
+                ),
+            }
+        );
 
         const layer = new lambda.LayerVersion(this, 'ScraperDependencies', {
             code: lambda.Code.fromAsset('src/layers/scraper'),
@@ -54,6 +55,9 @@ export class ServerlessScraperStack extends cdk.Stack {
                     externalModules: ['scraper'],
                     sourceMap: true,
                 },
+                environment: {
+                    QUEUE_URL: scrapedCompanyDataQueue.queueUrl,
+                },
             }
         );
 
@@ -68,6 +72,8 @@ export class ServerlessScraperStack extends cdk.Stack {
                 actions: ['*'],
             })
         );
+
+        scrapedCompanyDataQueue.grantSendMessages(getEarningsDataLambda);
 
         const rootScraper = new nodejs.NodejsFunction(
             this,

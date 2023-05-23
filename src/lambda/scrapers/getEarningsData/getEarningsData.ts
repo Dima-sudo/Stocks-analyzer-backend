@@ -4,6 +4,24 @@ import scraper from 'scraper';
 import { getTableData } from './helpers/getTableData';
 import { selectors, BASE_URL } from './getEarningsData.constants';
 import { getFinancialsTableData } from './helpers/getFinancialsTableData';
+const AWS = require('aws-sdk');
+
+interface Response {
+    summary: Record<string, string>;
+    earningsQuarterlyActual: Record<string, object>;
+    earningsYearlyForecasted: Record<string, object>;
+    earningsQuarterlyForecasted: Record<string, object>;
+
+    financialsIncomeStatementAnnual: Record<string, object>;
+    financialsBalanceSheetAnnual: Record<string, object>;
+    financialsCashFlowAnnual: Record<string, object>;
+    financialsRatiosAnnual: Record<string, object>;
+
+    financialsIncomeStatementQuarterly: Record<string, object>;
+    financialsBalanceSheetQuarterly: Record<string, object>;
+    financialsCashFlowQuarterly: Record<string, object>;
+    financialsRatiosQuarterly: Record<string, object>;
+}
 
 exports.handler = async function (
     event: any,
@@ -18,17 +36,35 @@ exports.handler = async function (
     const ticker = event.ticker;
 
     const data = {};
-    let browser;
+    let browser: any;
+    let page: any;
 
     try {
+        /*
+         * Chrome(ium) attempting to initialize GPU rendering within a VM. When I would specify:
+         * args: [ .... , '--disable-gpu', ... ]
+         * Then browser.newPage would execute immediately. However, this created a new problem for me where OpenLayers canvases wouldn't render.
+         * The fix for this was specifying the GL renderer thusly:
+         * args: [ ... ,'--use-gl=egl', ... ]
+         * The first option might help if you're not concerned about WebGL-based elements rendering correctly, while the latter should hopefully
+         * help if you need to render WebGL in a Linux VM (as Lambda is).
+         */
         browser = await puppeteer.launch({
-            args: [...chromium.args, '--disable-dev-shm-usage'],
+            args: [
+                ...chromium.args,
+                '--disable-dev-shm-usage',
+                '--disable-crash-reporter',
+                '--single-process',
+                '--disable-gpu',
+                '--use-gl=egl',
+            ],
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath,
             headless: chromium.headless,
             ignoreHTTPSErrors: true,
         });
-        const page = await browser.newPage();
+
+        page = await browser.newPage();
 
         await page.goto(`${BASE_URL}/stocks/${ticker}/earnings`, {
             waitUntil: ['networkidle0', 'domcontentloaded'],
@@ -75,20 +111,18 @@ exports.handler = async function (
 
                 financialsTableHeaderColumnsIncomeStatement,
                 financialsTableBodyRowsIncomeStatement,
-                financialsCellIncomeStatement,
 
                 financialsTableHeaderColumnsBalanceSheet,
                 financialsTableBodyRowsBalanceSheet,
-                financialsCellBalanceSheet,
 
                 financialsTableHeaderColumnsCashFlow,
                 financialsTableBodyRowsCashFlow,
-                financialsCellCashFlow,
 
                 financialsTableHeaderColumnsFinancialRatios,
                 financialsTableBodyRowsFinancialRatios,
-                financialsCellFinancialRatios,
             },
+            // button: { annualQuarterlyDropdownButton },
+            // singleSelect: { financialsOptionAnnual, financialsOptionQuarterly },
         } = selectors;
 
         const earningsQuarterlyActual = await getTableData({
@@ -141,6 +175,66 @@ exports.handler = async function (
             tableBodyRows: financialsTableBodyRowsFinancialRatios,
         });
 
+        // Wait for the annualQuarterlyDropdownButton to appear
+        await page.waitForSelector(
+            selectors.button.annualQuarterlyDropdownButton
+        );
+
+        // Scroll the button into view and click it
+        await page.$eval(
+            selectors.button.annualQuarterlyDropdownButton,
+            (button: any) => {
+                button.scrollIntoView();
+                button.click();
+            }
+        );
+
+        // Wait a bit to make sure the dropdown has appeared
+        await page.waitForTimeout(500);
+
+        // Wait for the financialsOptionQuarterly option to appear
+        await page.waitForSelector(
+            selectors.singleSelect.financialsOptionQuarterly
+        );
+
+        // Scroll the option into view and click it
+        await page.$eval(
+            selectors.singleSelect.financialsOptionQuarterly,
+            (option: any) => {
+                option.scrollIntoView();
+                option.click();
+            }
+        );
+
+        // Wait a bit to make sure the dropdown has appeared
+        await page.waitForTimeout(500);
+
+        const financialsIncomeStatementQuarterly = await getFinancialsTableData(
+            {
+                pageInstance: page,
+                tableHeaderColumns: financialsTableHeaderColumnsIncomeStatement,
+                tableBodyRows: financialsTableBodyRowsIncomeStatement,
+            }
+        );
+
+        const financialsBalanceSheetQuarterly = await getFinancialsTableData({
+            pageInstance: page,
+            tableHeaderColumns: financialsTableHeaderColumnsBalanceSheet,
+            tableBodyRows: financialsTableBodyRowsBalanceSheet,
+        });
+
+        const financialsCashFlowQuarterly = await getFinancialsTableData({
+            pageInstance: page,
+            tableHeaderColumns: financialsTableHeaderColumnsCashFlow,
+            tableBodyRows: financialsTableBodyRowsCashFlow,
+        });
+
+        const financialsRatiosQuarterly = await getFinancialsTableData({
+            pageInstance: page,
+            tableHeaderColumns: financialsTableHeaderColumnsFinancialRatios,
+            tableBodyRows: financialsTableBodyRowsFinancialRatios,
+        });
+
         const res = {
             summary: { ...data },
             earningsQuarterlyActual,
@@ -151,10 +245,28 @@ exports.handler = async function (
             financialsBalanceSheetAnnual,
             financialsCashFlowAnnual,
             financialsRatiosAnnual,
+
+            financialsIncomeStatementQuarterly,
+            financialsBalanceSheetQuarterly,
+            financialsCashFlowQuarterly,
+            financialsRatiosQuarterly,
         };
 
-        console.log('Response: ');
-        console.log(res);
+        const sqs = new AWS.SQS();
+        const params = {
+            QueueUrl: process.env.QUEUE_URL, // Access the QUEUE_URL environment variable
+            MessageBody: JSON.stringify(res),
+            MessageGroupId: 'scraperCompanyResultsMessageGroup', // Replace with your Message Group ID
+        };
+
+        sqs.sendMessage(params, (err: any, data: any) => {
+            if (err) {
+                console.error('Error', err);
+            } else {
+                console.log('Success', data.MessageId);
+            }
+        });
+
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -162,5 +274,8 @@ exports.handler = async function (
         };
     } catch (error: any) {
         throw new Error(error);
+    } finally {
+        await page.close();
+        await browser.close();
     }
 };

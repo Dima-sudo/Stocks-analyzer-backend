@@ -30,8 +30,6 @@ export const selectors = {
         // Each body row is (Name, Value, Value, Value) and the column headers are dates
         financialsTableBodyRowsIncomeStatement:
             '[data-panel-name="incomeStatementTable"] .financials__table-body tr',
-        financialsCellIncomeStatement:
-            '[data-panel-name="incomeStatementTable"] .financials__cell',
 
         // Balance Sheet
         financialsTableHeaderColumnsBalanceSheet:
@@ -39,8 +37,6 @@ export const selectors = {
         // Each body row is (Name, Value, Value, Value) and the column headers are dates
         financialsTableBodyRowsBalanceSheet:
             '[data-panel-name="balanceSheetTable"] .financials__table-body tr',
-        financialsCellBalanceSheet:
-            '[data-panel-name="balanceSheetTable"] .financials__cell',
 
         // Cash Flow Table
         financialsTableHeaderColumnsCashFlow:
@@ -48,8 +44,6 @@ export const selectors = {
         // Each body row is (Name, Value, Value, Value) and the column headers are dates
         financialsTableBodyRowsCashFlow:
             '[data-panel-name="cashFlowTable"] .financials__table-body tr',
-        financialsCellCashFlow:
-            '[data-panel-name="cashFlowTable"] .financials__cell',
 
         // Financial Ratios Table
         financialsTableHeaderColumnsFinancialRatios:
@@ -57,8 +51,15 @@ export const selectors = {
         // Each body row is (Name, Value, Value, Value) and the column headers are dates
         financialsTableBodyRowsFinancialRatios:
             '[data-panel-name="financialRatiosTable"] .financials__table-body tr',
-        financialsCellFinancialRatios:
-            '[data-panel-name="financialRatiosTable"] .financials__cell',
+    },
+    button: {
+        annualQuarterlyDropdownButton: '.financials__dropdown-toggle',
+    },
+    singleSelect: {
+        financialsOptionAnnual:
+            '.financials__dropdown-options [data-value="annual"].financials__dropdown-option',
+        financialsOptionQuarterly:
+            '.financials__dropdown-options [data-value="quarterly"].financials__dropdown-option',
     },
 };
 
