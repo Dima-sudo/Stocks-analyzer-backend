@@ -92,6 +92,9 @@ export class ServerlessScraperStack extends cdk.Stack {
                     sourceMap: true,
                 },
                 role: adminRole,
+                environment: {
+                    STACK_NAME: this.stackName,
+                },
             }
         );
 
@@ -123,5 +126,9 @@ export class ServerlessScraperStack extends cdk.Stack {
         getEarningsDataLambda.grantInvoke(rootScraper);
 
         rule.addTarget(new targets.LambdaFunction(rootScraper));
+
+        new cdk.CfnOutput(this, 'getEarningsDataLambdaArn', {
+            value: getEarningsDataLambda.functionArn,
+        });
     }
 }

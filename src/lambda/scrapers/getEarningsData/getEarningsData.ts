@@ -6,23 +6,6 @@ import { selectors, BASE_URL } from './getEarningsData.constants';
 import { getFinancialsTableData } from './helpers/getFinancialsTableData';
 const AWS = require('aws-sdk');
 
-interface Response {
-    summary: Record<string, string>;
-    earningsQuarterlyActual: Record<string, object>;
-    earningsYearlyForecasted: Record<string, object>;
-    earningsQuarterlyForecasted: Record<string, object>;
-
-    financialsIncomeStatementAnnual: Record<string, object>;
-    financialsBalanceSheetAnnual: Record<string, object>;
-    financialsCashFlowAnnual: Record<string, object>;
-    financialsRatiosAnnual: Record<string, object>;
-
-    financialsIncomeStatementQuarterly: Record<string, object>;
-    financialsBalanceSheetQuarterly: Record<string, object>;
-    financialsCashFlowQuarterly: Record<string, object>;
-    financialsRatiosQuarterly: Record<string, object>;
-}
-
 exports.handler = async function (
     event: any,
     context: any,
@@ -65,6 +48,16 @@ exports.handler = async function (
         });
 
         page = await browser.newPage();
+
+        await page.goto('https://whatismyipaddress.com/', {
+            waitUntil: ['networkidle0', 'domcontentloaded'],
+            timeout: 80000,
+        });
+
+        const functionIpv4Address = await page.$eval(
+            '.address#ipv4',
+            (element: any) => element.textContent
+        );
 
         await page.goto(`${BASE_URL}/stocks/${ticker}/earnings`, {
             waitUntil: ['networkidle0', 'domcontentloaded'],
@@ -236,6 +229,9 @@ exports.handler = async function (
         });
 
         const res = {
+            metaData: {
+                ip: functionIpv4Address,
+            },
             summary: { ...data },
             earningsQuarterlyActual,
             earningsYearlyForecasted,
@@ -266,7 +262,7 @@ exports.handler = async function (
                 console.log('Success', data.MessageId);
             }
         });
-
+        console.log(res);
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },

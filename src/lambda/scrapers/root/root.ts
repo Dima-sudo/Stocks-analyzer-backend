@@ -1,6 +1,6 @@
-import { ResourceNames, CloudWatch } from './../../../aws/enums';
 import * as AWS from 'aws-sdk';
 import { tickers } from './root.constants';
+import { sleep } from 'src/utils/sleep';
 
 exports.handler = async function (
     event: any,
@@ -10,30 +10,48 @@ exports.handler = async function (
     try {
         const { log } = console;
         log('Function invoked with: ', JSON.stringify(event, undefined, 2));
-        const ipAddress = event.requestContext.identity.sourceIp;
-        log(ipAddress);
 
         const lambda = new AWS.Lambda();
 
-        await Promise.all(
-            tickers.map(async (ticker) => {
-                const params = {
-                    // FunctionName: ResourceNames.GET_EARNINGS_DATA,
-                    FunctionName:
-                        // This is a placeholder, the arn for the function through the stack is different than the actual arn.
-                        // @TODO access this field programmatically
-                        'arn:aws:lambda:eu-west-1:295594749891:function:ServerlessScraperStack-GetEarningsDataB158A8BD-KLqElYrwlVvC',
-                    InvocationType: 'Event',
-                    LogType: 'None',
-                    Payload: JSON.stringify({
-                        ticker,
-                    }),
-                };
-                log(`Invoking lambda for ticker ${ticker}`);
+        // await Promise.all(
+        //     tickers.map(async (ticker) => {
+        for (let ticker of tickers) {
+            const cloudFormation = new AWS.CloudFormation();
 
-                await lambda.invoke(params).promise();
-            })
-        );
+            const stackName = process.env.STACK_NAME;
+
+            const data = await cloudFormation
+                .describeStacks({ StackName: stackName })
+                .promise();
+
+            //@ts-ignore
+            const outputs = data.Stacks[0].Outputs;
+            //@ts-ignore
+            const functionArn = outputs?.find(
+                (o) => o?.OutputKey === 'getEarningsDataLambdaArn'
+            ).OutputValue;
+            console.log('FUNCTION ARN:');
+            console.log(functionArn);
+            console.log(JSON.stringify(outputs));
+
+            const params = {
+                FunctionName:
+                    // This is a placeholder, the arn for the function through the stack is different than the actual arn.
+                    functionArn as string,
+                InvocationType: 'Event',
+                LogType: 'None',
+                Payload: JSON.stringify({
+                    ticker,
+                }),
+            };
+            console.log(params);
+
+            log(`Invoking lambda for ticker ${ticker}`);
+
+            await lambda.invoke(params).promise();
+        }
+        //     })
+        // );
 
         return {
             statusCode: 200,
