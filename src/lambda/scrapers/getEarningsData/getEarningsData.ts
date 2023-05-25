@@ -4,6 +4,7 @@ import scraper from 'scraper';
 import { getTableData } from './helpers/getTableData';
 import { selectors, BASE_URL } from './getEarningsData.constants';
 import { getFinancialsTableData } from './helpers/getFinancialsTableData';
+import { PUPPETEER_DEFAULT_PAGE_OPTIONS } from 'src/aws/enums';
 const AWS = require('aws-sdk');
 
 exports.handler = async function (
@@ -24,7 +25,7 @@ exports.handler = async function (
 
     try {
         /*
-         * Chrome(ium) attempting to initialize GPU rendering within a VM. When I would specify:
+         * Chrome(ium) attempting to initialize GPU rendering within a VM so that browser.close() won't work. When I would specify:
          * args: [ .... , '--disable-gpu', ... ]
          * Then browser.newPage would execute immediately. However, this created a new problem for me where OpenLayers canvases wouldn't render.
          * The fix for this was specifying the GL renderer thusly:
@@ -49,20 +50,20 @@ exports.handler = async function (
 
         page = await browser.newPage();
 
-        await page.goto('https://whatismyipaddress.com/', {
-            waitUntil: ['networkidle0', 'domcontentloaded'],
-            timeout: 80000,
-        });
+        await page.goto(
+            'https://whatismyipaddress.com/',
+            PUPPETEER_DEFAULT_PAGE_OPTIONS
+        );
 
         const functionIpv4Address = await page.$eval(
             '.address#ipv4',
             (element: any) => element.textContent
         );
 
-        await page.goto(`${BASE_URL}/stocks/${ticker}/earnings`, {
-            waitUntil: ['networkidle0', 'domcontentloaded'],
-            timeout: 60000,
-        });
+        await page.goto(
+            `${BASE_URL}/stocks/${ticker}/earnings`,
+            PUPPETEER_DEFAULT_PAGE_OPTIONS
+        );
 
         await Promise.all(
             Object.entries(selectors.summary).map(
@@ -139,10 +140,10 @@ exports.handler = async function (
             tableCell: earningsForecastQuarterlyTableCell,
         });
 
-        await page.goto(`${BASE_URL}/stocks/${ticker}/financials`, {
-            waitUntil: ['networkidle0', 'domcontentloaded'],
-            timeout: 60000,
-        });
+        await page.goto(
+            `${BASE_URL}/stocks/${ticker}/financials`,
+            PUPPETEER_DEFAULT_PAGE_OPTIONS
+        );
 
         const financialsIncomeStatementAnnual = await getFinancialsTableData({
             pageInstance: page,
@@ -255,9 +256,9 @@ exports.handler = async function (
             MessageGroupId: 'scraperCompanyResultsMessageGroup', // Replace with your Message Group ID
         };
 
-        sqs.sendMessage(params, (err: any, data: any) => {
-            if (err) {
-                console.error('Error', err);
+        sqs.sendMessage(params, (error: any, data: any) => {
+            if (error) {
+                throw new Error(error);
             } else {
                 console.log('Success', data.MessageId);
             }

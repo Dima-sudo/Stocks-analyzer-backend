@@ -2,8 +2,10 @@ export enum ResourceNames {
     STOCKS_TOPIC = 'stocksTopic',
     STOCKS_QUEUE = 'stocksQueue',
     GET_EARNINGS_DATA = 'getEarningsData',
+    GET_MACRO_INDICATORS_DATA = 'getMacroIndicatorsData',
     SCRAPER_ROOT_WORKER = 'scraperRootWorker',
     UPSERT_LOG_STREAM = 'upsertLogStream',
+    PRIMARY_DATABASE_NAME = 'primaryDatabase',
 }
 
 export enum EventNames {
@@ -13,11 +15,25 @@ export enum EventNames {
 export enum Timeouts {
     STOCKS_QUEUE_VISIBILITY_TIMEOUT_SECONDS = 300,
     LAMBDA_TIMEOUT_MINUTES = 1,
+    PAGE_NAVIGATION_TIMEOUT_MS = 80000,
 }
 
 export enum CloudWatch {
     WORKER_ERROR_LOG_GROUP = 'workerErrorLogGroup',
 }
+
+export enum InvocationType {
+    EVENT = 'Event',
+}
+
+export enum CFNOutputs {
+    GET_EARNINGS_DATA_ARN = 'getEarningsDataArn',
+}
+
+export const PUPPETEER_DEFAULT_PAGE_OPTIONS = {
+    waitUntil: ['networkidle0', 'domcontentloaded'],
+    timeout: Timeouts.PAGE_NAVIGATION_TIMEOUT_MS,
+};
 
 // Cron Format:
 // ```cron(Minutes Hours Day-of-month Month Day-of-week Year)```

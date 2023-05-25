@@ -1,6 +1,6 @@
 import * as AWS from 'aws-sdk';
 import { tickers } from './root.constants';
-import { sleep } from 'src/utils/sleep';
+import { CFNOutputs, InvocationType } from 'src/aws/enums';
 
 exports.handler = async function (
     event: any,
@@ -28,17 +28,12 @@ exports.handler = async function (
             const outputs = data.Stacks[0].Outputs;
             //@ts-ignore
             const functionArn = outputs?.find(
-                (o) => o?.OutputKey === 'getEarningsDataLambdaArn'
+                (o) => o?.OutputKey === CFNOutputs.GET_EARNINGS_DATA_ARN
             ).OutputValue;
-            console.log('FUNCTION ARN:');
-            console.log(functionArn);
-            console.log(JSON.stringify(outputs));
 
             const params = {
-                FunctionName:
-                    // This is a placeholder, the arn for the function through the stack is different than the actual arn.
-                    functionArn as string,
-                InvocationType: 'Event',
+                FunctionName: functionArn as string,
+                InvocationType: InvocationType.EVENT,
                 LogType: 'None',
                 Payload: JSON.stringify({
                     ticker,

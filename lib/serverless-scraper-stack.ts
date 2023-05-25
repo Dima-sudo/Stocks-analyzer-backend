@@ -6,10 +6,18 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 
+// import * as rds from 'aws-cdk-lib/aws-rds';
+// import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as path from 'path';
 
 import { Construct } from 'constructs';
-import { ResourceNames, Timeouts, EventNames, Cron } from '../src/aws/enums';
+import {
+    ResourceNames,
+    Timeouts,
+    EventNames,
+    Cron,
+    CFNOutputs,
+} from '../src/aws/enums';
 require('dotenv').config();
 
 export class ServerlessScraperStack extends cdk.Stack {
@@ -57,6 +65,27 @@ export class ServerlessScraperStack extends cdk.Stack {
                 },
                 environment: {
                     QUEUE_URL: scrapedCompanyDataQueue.queueUrl,
+                },
+            }
+        );
+
+        new nodejs.NodejsFunction(
+            this,
+            ResourceNames.GET_MACRO_INDICATORS_DATA,
+            {
+                runtime: lambda.Runtime.NODEJS_16_X,
+                entry: path.join(
+                    __dirname,
+                    `/../src/lambda/scrapers/getMacroIndicatorsData/getMacroIndicatorsData.ts`
+                ),
+                handler: 'handler',
+                timeout: cdk.Duration.minutes(Timeouts.LAMBDA_TIMEOUT_MINUTES),
+                layers: [layer],
+                memorySize: 1024,
+                bundling: {
+                    // Include layers here
+                    externalModules: ['scraper'],
+                    sourceMap: true,
                 },
             }
         );
@@ -127,8 +156,28 @@ export class ServerlessScraperStack extends cdk.Stack {
 
         rule.addTarget(new targets.LambdaFunction(rootScraper));
 
-        new cdk.CfnOutput(this, 'getEarningsDataLambdaArn', {
+        new cdk.CfnOutput(this, CFNOutputs.GET_EARNINGS_DATA_ARN, {
             value: getEarningsDataLambda.functionArn,
         });
+
+        // const vpc = ec2.Vpc.fromLookup(this, 'VPC', { isDefault: true });
+
+        // new rds.DatabaseInstance(this, 'PostgreSQLInstance', {
+        //     engine: rds.DatabaseInstanceEngine.postgres({
+        //         version: rds.PostgresEngineVersion.VER_13_3,
+        //     }),
+        //     instanceType: ec2.InstanceType.of(
+        //         ec2.InstanceClass.T3,
+        //         ec2.InstanceSize.MICRO
+        //     ),
+        //     vpc,
+        //     vpcSubnets: {
+        //         subnetType: ec2.SubnetType.PUBLIC,
+        //     },
+        //     allocatedStorage: 20,
+        //     masterUsername: 'admin',
+        //     databaseName: ResourceNames.PRIMARY_DATABASE_NAME,
+        //     removalPolicy: cdk.RemovalPolicy.DESTROY, // not for production environment
+        // });
     }
 }

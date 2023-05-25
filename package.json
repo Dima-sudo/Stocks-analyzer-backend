@@ -34,7 +34,10 @@
         "constructs": "^10.0.0",
         "date-fns": "^2.24.0",
         "dotenv": "^16.0.3",
+        "pg": "^8.11.0",
+        "pg-hstore": "^2.3.4",
         "puppeteer-core": "^19.2.2",
+        "sequelize": "^6.31.1",
         "source-map-support": "^0.5.21"
     }
 }
