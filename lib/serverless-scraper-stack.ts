@@ -79,7 +79,9 @@ export class ServerlessScraperStack extends cdk.Stack {
                     `/../src/lambda/scrapers/getMacroIndicatorsData/getMacroIndicatorsData.ts`
                 ),
                 handler: 'handler',
-                timeout: cdk.Duration.minutes(Timeouts.LAMBDA_TIMEOUT_MINUTES),
+                timeout: cdk.Duration.minutes(
+                    Timeouts.GET_MACRO_INDICATORS_DATA_TIMEOUT_MINUTES
+                ),
                 layers: [layer],
                 memorySize: 1024,
                 bundling: {

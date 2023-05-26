@@ -1,10 +1,17 @@
 // @ts-ignore
 import scraper from 'scraper';
 import { PUPPETEER_DEFAULT_PAGE_OPTIONS } from 'src/aws/enums';
-import { selectors } from './getMacroIndicatorsData.constants';
+import {
+    INDICATOR_COLUMNS,
+    selectors,
+} from './getMacroIndicatorsData.constants';
 import { Page } from 'puppeteer-core';
 import { Browser } from 'puppeteer-core';
 import { PuppeteerLifeCycleEvent } from 'puppeteer-core';
+import {
+    buildDataObjectFromTable,
+    cleanSpacesAndLineBreaks,
+} from './getMacroIndicatorsData.util';
 
 exports.handler = async function (
     event: any,
@@ -46,17 +53,43 @@ exports.handler = async function (
         page = await browser.newPage();
 
         await page.goto(
-            'https://https://tradingeconomics.com/united-states/indicators',
+            'https://tradingeconomics.com/united-states/indicators',
             PUPPETEER_DEFAULT_PAGE_OPTIONS as {
                 timeout: number;
                 waitUntil: PuppeteerLifeCycleEvent[] | undefined;
             }
         );
 
-        console.log(page.content());
-
         const { indicatorsTableRows } = selectors;
-        const elements = await page.$$eval(indicatorsTableRows, () => {});
+        const elements = await page.$$eval(indicatorsTableRows, (rows) => {
+            return rows.map((row) => {
+                const columns = row.querySelectorAll('td');
+                // Can't clean the textContent here because $$eval expects browser context which doesn't
+                // have access to the node.js scope
+                return Array.from(columns, (column) => column.textContent);
+            });
+        });
+
+        const formattedElements = elements.map((row) => {
+            return row.map((columnText) =>
+                cleanSpacesAndLineBreaks(columnText || '')
+            );
+        });
+
+        const data = buildDataObjectFromTable(
+            formattedElements,
+            INDICATOR_COLUMNS
+        );
+
+        console.log('data:');
+        console.log(data);
+
+        return {
+            statusCode: 200,
+            body: JSON.stringify({
+                data,
+            }),
+        };
     } catch (error: any) {
         throw new Error(error);
     } finally {
@@ -65,11 +98,4 @@ exports.handler = async function (
         // @ts-ignore
         await browser.close();
     }
-
-    return {
-        statusCode: 200,
-        body: JSON.stringify({
-            message: 'Hello World',
-        }),
-    };
 };
