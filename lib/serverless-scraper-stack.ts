@@ -6,8 +6,10 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 
-// import * as rds from 'aws-cdk-lib/aws-rds';
-// import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as rds from 'aws-cdk-lib/aws-rds';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+
 import * as path from 'path';
 
 import { Construct } from 'constructs';
@@ -17,12 +19,95 @@ import {
     EventNames,
     Cron,
     CFNOutputs,
+    DATABASE,
 } from '../src/aws/enums';
 require('dotenv').config();
 
 export class ServerlessScraperStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-        super(scope, id, props);
+        super(scope, id, {
+            env: {
+                account: process.env.CDK_DEFAULT_ACCOUNT,
+                region: process.env.CDK_DEFAULT_REGION,
+            },
+            ...props,
+        });
+
+        const adminRole = new iam.Role(this, 'ScraperLambdaRole', {
+            assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+        });
+
+        adminRole.addToPolicy(
+            new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                resources: ['*'],
+                actions: ['*'],
+            })
+        );
+
+        const dbCredentials = new secretsmanager.Secret(this, 'DbCredentials', {
+            description: 'RDS Instance credentials',
+            generateSecretString: {
+                secretStringTemplate: JSON.stringify({
+                    username: process.env.DB_USERNAME,
+                }),
+                generateStringKey: 'password',
+                excludeCharacters: '@%\'/\\\\" ',
+            },
+        });
+
+        const vpc = ec2.Vpc.fromLookup(this, 'VPC', { isDefault: true });
+
+        const lambdaSecurityGroup = new ec2.SecurityGroup(
+            this,
+            'lambdaSecurityGroup',
+            {
+                vpc,
+                description:
+                    'Allow all outbound traffic and inbound traffic from RDS instance',
+                allowAllOutbound: true,
+            }
+        );
+
+        const rdsSecurityGroup = new ec2.SecurityGroup(
+            this,
+            'rdsSecurityGroup',
+            {
+                vpc,
+                description:
+                    'Allow all outbound traffic and inbound traffic from Lambda functions',
+                allowAllOutbound: true,
+            }
+        );
+
+        // rdsSecurityGroup.addIngressRule(
+        //     lambdaSecurityGroup,
+        //     ec2.Port.tcp(Number(process.env.DB_PORT) as unknown as number),
+        //     'Allow PostgreSQL inbound from Lambda Security Group'
+        // );
+        lambdaSecurityGroup.addEgressRule(
+            rdsSecurityGroup,
+            ec2.Port.tcp(5432),
+            'Allow PostgreSQL outbound to RDS Security Group'
+        );
+
+        lambdaSecurityGroup.addIngressRule(
+            rdsSecurityGroup,
+            ec2.Port.tcp(5432),
+            'Allow PostgreSQL outbound to RDS Security Group'
+        );
+
+        // rdsSecurityGroup.addEgressRule(
+        //     lambdaSecurityGroup,
+        //     ec2.Port.tcp(5432),
+        //     'Allow PostgreSQL inbound from Lambda Security Group'
+        // );
+
+        rdsSecurityGroup.addIngressRule(
+            ec2.Peer.anyIpv4(),
+            ec2.Port.tcp(5432),
+            'Allow PostgreSQL inbound from Lambda Security Group'
+        );
 
         const scrapedCompanyDataQueue = new sqs.Queue(
             this,
@@ -79,9 +164,7 @@ export class ServerlessScraperStack extends cdk.Stack {
                     `/../src/lambda/scrapers/getMacroIndicatorsData/getMacroIndicatorsData.ts`
                 ),
                 handler: 'handler',
-                timeout: cdk.Duration.minutes(
-                    Timeouts.GET_MACRO_INDICATORS_DATA_TIMEOUT_MINUTES
-                ),
+                timeout: cdk.Duration.minutes(2),
                 layers: [layer],
                 memorySize: 1024,
                 bundling: {
@@ -89,19 +172,12 @@ export class ServerlessScraperStack extends cdk.Stack {
                     externalModules: ['scraper'],
                     sourceMap: true,
                 },
+                environment: {
+                    STACK_NAME: this.stackName,
+                },
+                role: adminRole,
+                securityGroups: [lambdaSecurityGroup],
             }
-        );
-
-        const adminRole = new iam.Role(this, 'ScraperLambdaRole', {
-            assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-        });
-
-        adminRole.addToPolicy(
-            new iam.PolicyStatement({
-                effect: iam.Effect.ALLOW,
-                resources: ['*'],
-                actions: ['*'],
-            })
         );
 
         scrapedCompanyDataQueue.grantSendMessages(getEarningsDataLambda);
@@ -162,24 +238,29 @@ export class ServerlessScraperStack extends cdk.Stack {
             value: getEarningsDataLambda.functionArn,
         });
 
-        // const vpc = ec2.Vpc.fromLookup(this, 'VPC', { isDefault: true });
+        new cdk.CfnOutput(this, CFNOutputs.GET_DB_CREDENTIALS_SECRET_ARN, {
+            value: dbCredentials.secretFullArn || dbCredentials.secretArn,
+        });
 
-        // new rds.DatabaseInstance(this, 'PostgreSQLInstance', {
-        //     engine: rds.DatabaseInstanceEngine.postgres({
-        //         version: rds.PostgresEngineVersion.VER_13_3,
-        //     }),
-        //     instanceType: ec2.InstanceType.of(
-        //         ec2.InstanceClass.T3,
-        //         ec2.InstanceSize.MICRO
-        //     ),
-        //     vpc,
-        //     vpcSubnets: {
-        //         subnetType: ec2.SubnetType.PUBLIC,
-        //     },
-        //     allocatedStorage: 20,
-        //     masterUsername: 'admin',
-        //     databaseName: ResourceNames.PRIMARY_DATABASE_NAME,
-        //     removalPolicy: cdk.RemovalPolicy.DESTROY, // not for production environment
-        // });
+        new rds.DatabaseInstance(this, 'PostgreSQLInstance', {
+            engine: rds.DatabaseInstanceEngine.postgres({
+                version: rds.PostgresEngineVersion.VER_14_4,
+            }),
+            instanceType: ec2.InstanceType.of(
+                ec2.InstanceClass.T4G,
+                ec2.InstanceSize.MICRO
+            ),
+            vpc,
+            vpcSubnets: {
+                subnetType: ec2.SubnetType.PUBLIC,
+            },
+            allocatedStorage: DATABASE.DATABASE_INSTANCE_STORAGE_SIZE,
+            credentials: rds.Credentials.fromSecret(dbCredentials),
+            databaseName: ResourceNames.PRIMARY_DATABASE_NAME,
+            removalPolicy: cdk.RemovalPolicy.DESTROY, // not for production environment
+            securityGroups: [rdsSecurityGroup],
+            // NOT FOR PROD
+            publiclyAccessible: true,
+        });
     }
 }

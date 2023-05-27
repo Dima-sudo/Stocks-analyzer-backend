@@ -29,12 +29,34 @@ export enum InvocationType {
 
 export enum CFNOutputs {
     GET_EARNINGS_DATA_ARN = 'getEarningsDataArn',
+    GET_DB_CREDENTIALS_SECRET_ARN = 'getDbCredentialsSecretArn',
 }
 
 export const PUPPETEER_DEFAULT_PAGE_OPTIONS = {
     waitUntil: ['networkidle0', 'domcontentloaded'],
     timeout: Timeouts.PAGE_NAVIGATION_TIMEOUT_MS,
 };
+
+export enum DATABASE {
+    DATABASE_INSTANCE_STORAGE_SIZE = 20,
+}
+
+/*
+ * Chrome(ium) attempting to initialize GPU rendering within a VM so that browser.close() won't work. When I would specify:
+ * args: [ .... , '--disable-gpu', ... ]
+ * Then browser.newPage would execute immediately. However, this created a new problem for me where OpenLayers canvases wouldn't render.
+ * The fix for this was specifying the GL renderer thusly:
+ * args: [ ... ,'--use-gl=egl', ... ]
+ * The first option might help if you're not concerned about WebGL-based elements rendering correctly, while the latter should hopefully
+ * help if you need to render WebGL in a Linux VM (as Lambda is).
+ */
+export const PUPPETEER_DEFAULT_BROWSER_OPTIONS = [
+    '--disable-dev-shm-usage',
+    '--disable-crash-reporter',
+    '--single-process',
+    '--disable-gpu',
+    '--use-gl=egl',
+];
 
 // Cron Format:
 // ```cron(Minutes Hours Day-of-month Month Day-of-week Year)```

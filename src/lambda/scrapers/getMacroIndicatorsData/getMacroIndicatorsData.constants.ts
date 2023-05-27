@@ -9,3 +9,6 @@ export const INDICATOR_COLUMNS = [
     'unit of measurement',
     'reference point',
 ];
+
+export const MACRO_INDICATORS_URL =
+    'https://tradingeconomics.com/united-states/indicators';

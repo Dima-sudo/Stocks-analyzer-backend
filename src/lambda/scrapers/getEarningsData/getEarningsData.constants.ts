@@ -64,3 +64,4 @@ export const selectors = {
 };
 
 export const BASE_URL = 'https://www.nasdaq.com/market-activity';
+export const BASE_GET_IP_URL = 'https://whatismyipaddress.com';

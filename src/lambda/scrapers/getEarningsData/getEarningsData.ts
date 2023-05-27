@@ -2,16 +2,19 @@
 import scraper from 'scraper';
 
 import { getTableData } from './helpers/getTableData';
-import { selectors, BASE_URL } from './getEarningsData.constants';
+import {
+    selectors,
+    BASE_URL,
+    BASE_GET_IP_URL,
+} from './getEarningsData.constants';
 import { getFinancialsTableData } from './helpers/getFinancialsTableData';
-import { PUPPETEER_DEFAULT_PAGE_OPTIONS } from 'src/aws/enums';
+import {
+    PUPPETEER_DEFAULT_BROWSER_OPTIONS,
+    PUPPETEER_DEFAULT_PAGE_OPTIONS,
+} from 'src/aws/enums';
 const AWS = require('aws-sdk');
 
-exports.handler = async function (
-    event: any,
-    context: any,
-    callback: () => void
-) {
+exports.handler = async function (event: any) {
     const { log } = console;
     log('Function invoked with: ', JSON.stringify(event, undefined, 2));
 
@@ -24,24 +27,8 @@ exports.handler = async function (
     let page: any;
 
     try {
-        /*
-         * Chrome(ium) attempting to initialize GPU rendering within a VM so that browser.close() won't work. When I would specify:
-         * args: [ .... , '--disable-gpu', ... ]
-         * Then browser.newPage would execute immediately. However, this created a new problem for me where OpenLayers canvases wouldn't render.
-         * The fix for this was specifying the GL renderer thusly:
-         * args: [ ... ,'--use-gl=egl', ... ]
-         * The first option might help if you're not concerned about WebGL-based elements rendering correctly, while the latter should hopefully
-         * help if you need to render WebGL in a Linux VM (as Lambda is).
-         */
         browser = await puppeteer.launch({
-            args: [
-                ...chromium.args,
-                '--disable-dev-shm-usage',
-                '--disable-crash-reporter',
-                '--single-process',
-                '--disable-gpu',
-                '--use-gl=egl',
-            ],
+            args: [...chromium.args, ...PUPPETEER_DEFAULT_BROWSER_OPTIONS],
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath,
             headless: chromium.headless,
@@ -50,10 +37,7 @@ exports.handler = async function (
 
         page = await browser.newPage();
 
-        await page.goto(
-            'https://whatismyipaddress.com/',
-            PUPPETEER_DEFAULT_PAGE_OPTIONS
-        );
+        await page.goto(BASE_GET_IP_URL, PUPPETEER_DEFAULT_PAGE_OPTIONS);
 
         const functionIpv4Address = await page.$eval(
             '.address#ipv4',

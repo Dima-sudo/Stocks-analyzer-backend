@@ -1,8 +1,12 @@
 // @ts-ignore
 import scraper from 'scraper';
-import { PUPPETEER_DEFAULT_PAGE_OPTIONS } from 'src/aws/enums';
+import {
+    PUPPETEER_DEFAULT_BROWSER_OPTIONS,
+    PUPPETEER_DEFAULT_PAGE_OPTIONS,
+} from 'src/aws/enums';
 import {
     INDICATOR_COLUMNS,
+    MACRO_INDICATORS_URL,
     selectors,
 } from './getMacroIndicatorsData.constants';
 import { Page } from 'puppeteer-core';
@@ -12,13 +16,13 @@ import {
     buildDataObjectFromTable,
     cleanSpacesAndLineBreaks,
 } from './getMacroIndicatorsData.util';
+import { loadSequelize } from 'database/getConnectionInstance';
 
-exports.handler = async function (
-    event: any,
-    context: any,
-    callback: () => void
-) {
+let sequelize;
+
+exports.handler = async function (event: any) {
     const { log } = console;
+
     log('Function invoked with: ', JSON.stringify(event, undefined, 2));
 
     const { chromium, puppeteer } = scraper;
@@ -26,24 +30,12 @@ exports.handler = async function (
     let browser: Browser;
     let page: Page;
     try {
-        /*
-         * Chrome(ium) attempting to initialize GPU rendering within a VM so that browser.close() won't work. When I would specify:
-         * args: [ .... , '--disable-gpu', ... ]
-         * Then browser.newPage would execute immediately. However, this created a new problem for me where OpenLayers canvases wouldn't render.
-         * The fix for this was specifying the GL renderer thusly:
-         * args: [ ... ,'--use-gl=egl', ... ]
-         * The first option might help if you're not concerned about WebGL-based elements rendering correctly, while the latter should hopefully
-         * help if you need to render WebGL in a Linux VM (as Lambda is).
-         */
+        console.log('SEQUELIZE BEFORE');
+        sequelize = await loadSequelize();
+        console.log('SEQUELIZE AFTER');
+
         browser = await puppeteer.launch({
-            args: [
-                ...chromium.args,
-                '--disable-dev-shm-usage',
-                '--disable-crash-reporter',
-                '--single-process',
-                '--disable-gpu',
-                '--use-gl=egl',
-            ],
+            args: [...chromium.args, ...PUPPETEER_DEFAULT_BROWSER_OPTIONS],
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath,
             headless: chromium.headless,
@@ -53,7 +45,7 @@ exports.handler = async function (
         page = await browser.newPage();
 
         await page.goto(
-            'https://tradingeconomics.com/united-states/indicators',
+            MACRO_INDICATORS_URL,
             PUPPETEER_DEFAULT_PAGE_OPTIONS as {
                 timeout: number;
                 waitUntil: PuppeteerLifeCycleEvent[] | undefined;
