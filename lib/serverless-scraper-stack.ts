@@ -17,22 +17,18 @@ export class ServerlessScraperStack extends cdk.Stack {
             ...props,
         });
 
-        const githubCredentials = new secretsmanager.Secret(
-            this,
-            'githubCredentials',
-            {
-                description: 'Github User credentials',
-                generateSecretString: {
-                    secretStringTemplate: JSON.stringify({
-                        owner: process.env.GITHUB_USERNAME,
-                        repo: process.env.GITHUB_REPO_NAME,
-                        branch: process.env.GITHUB_BRANCH_NAME,
-                        githubToken: process.env.GITHUB_TOKEN,
-                    }),
-                    generateStringKey: 'secretIdentifier',
-                },
-            }
-        );
+        new secretsmanager.Secret(this, 'githubCredentials', {
+            description: 'Github User credentials',
+            generateSecretString: {
+                secretStringTemplate: JSON.stringify({
+                    owner: process.env.GITHUB_USERNAME,
+                    repo: process.env.GITHUB_REPO_NAME,
+                    branch: process.env.GITHUB_BRANCH_NAME,
+                    githubToken: process.env.GITHUB_TOKEN,
+                }),
+                generateStringKey: 'secretIdentifier',
+            },
+        });
 
         const source = pipelines.CodePipelineSource.gitHub(
             `${process.env.GITHUB_USERNAME}/${process.env.GITHUB_REPO_NAME}`,
