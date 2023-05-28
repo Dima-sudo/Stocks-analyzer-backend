@@ -293,6 +293,7 @@ export class ServerlessScraperStack extends cdk.Stack {
 
         const pipeline = new codepipeline.Pipeline(this, 'Pipeline', {
             pipelineName: 'PipelinePrimary',
+            role: adminRole,
         });
 
         pipeline.addStage({
