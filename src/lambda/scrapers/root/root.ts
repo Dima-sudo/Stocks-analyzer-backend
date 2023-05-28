@@ -2,11 +2,7 @@ import * as AWS from 'aws-sdk';
 import { tickers } from './root.constants';
 import { CFNOutputs, InvocationType } from 'src/aws/enums';
 
-exports.handler = async function (
-    event: any,
-    context: any,
-    callback: () => void
-) {
+exports.handler = async function (event: any) {
     try {
         const { log } = console;
         log('Function invoked with: ', JSON.stringify(event, undefined, 2));
