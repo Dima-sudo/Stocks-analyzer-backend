@@ -16,9 +16,6 @@ import {
     buildDataObjectFromTable,
     cleanSpacesAndLineBreaks,
 } from './getMacroIndicatorsData.util';
-import { loadSequelize } from 'database/getConnectionInstance';
-
-let sequelize;
 
 exports.handler = async function (event: any) {
     const { log } = console;
@@ -31,7 +28,6 @@ exports.handler = async function (event: any) {
     let page: Page;
     try {
         console.log('SEQUELIZE BEFORE');
-        sequelize = await loadSequelize();
         console.log('SEQUELIZE AFTER');
 
         browser = await puppeteer.launch({

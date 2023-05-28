@@ -1,5 +1,4 @@
 import { CloudWatchLogs } from 'aws-sdk';
-import { Context } from 'aws-lambda';
 import { WebClient } from '@slack/web-api';
 import { sendSlackMessage } from 'src/services/slack/sendSlackMessage';
 
@@ -12,11 +11,7 @@ interface CloudWatchLogEvent {
     logEvent: string;
 }
 
-exports.handler = async function upsertLogStream(
-    event: CloudWatchLogEvent,
-    context: Context,
-    callback: () => void
-) {
+exports.handler = async function upsertLogStream(event: CloudWatchLogEvent) {
     console.log('SLACK API');
     console.log(process.env.SLACK_API_BOT_TOKEN);
     const { logGroupName, logStreamName, logEvent } = event;
