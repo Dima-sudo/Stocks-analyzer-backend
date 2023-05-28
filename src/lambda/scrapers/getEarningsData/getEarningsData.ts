@@ -253,8 +253,8 @@ exports.handler = async function (event: any) {
             headers: { 'Content-Type': 'application/json' },
             body: res,
         };
-    } catch (error: any) {
-        throw new Error(error);
+    } catch (error) {
+        throw new Error(error as any);
     } finally {
         await page.close();
         await browser.close();
