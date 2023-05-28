@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as pipelines from 'aws-cdk-lib/pipelines';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 import { Construct } from 'constructs';
 import { ApplicationStage } from './ApplicationStage';
@@ -17,25 +18,42 @@ export class ServerlessScraperStack extends cdk.Stack {
             ...props,
         });
 
-        new secretsmanager.Secret(this, 'githubCredentials', {
-            description: 'Github User credentials',
-            generateSecretString: {
-                secretStringTemplate: JSON.stringify({
-                    owner: process.env.GITHUB_USERNAME,
-                    repo: process.env.GITHUB_REPO_NAME,
-                    branch: process.env.GITHUB_BRANCH_NAME,
-                    githubToken: process.env.GITHUB_TOKEN,
-                }),
-                generateStringKey: 'secretIdentifier',
-            },
+        const adminRole = new iam.Role(this, 'ScraperLambdaRole', {
+            assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
         });
+
+        adminRole.addToPolicy(
+            new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                resources: ['*'],
+                actions: ['*'],
+            })
+        );
+
+        const githubCredentials = new secretsmanager.Secret(
+            this,
+            'githubCredentials',
+            {
+                description: 'Github User credentials',
+                generateSecretString: {
+                    secretStringTemplate: JSON.stringify({
+                        owner: process.env.GITHUB_USERNAME,
+                        repo: process.env.GITHUB_REPO_NAME,
+                        branch: process.env.GITHUB_BRANCH_NAME,
+                        githubToken: process.env.GITHUB_TOKEN,
+                    }),
+                    generateStringKey: 'secretIdentifier',
+                },
+            }
+        );
 
         const source = pipelines.CodePipelineSource.gitHub(
             `${process.env.GITHUB_USERNAME}/${process.env.GITHUB_REPO_NAME}`,
             process.env.GITHUB_BRANCH_NAME as string,
             {
                 authentication: cdk.SecretValue.secretsManager(
-                    'arn:aws:secretsmanager:eu-west-1:295594749891:secret:githubCredentialsEC1FF84F-1vHrdbuA2IAq-q53xpO',
+                    githubCredentials.secretFullArn ||
+                        githubCredentials.secretArn,
                     { jsonField: 'githubToken' }
                 ),
             }
@@ -49,6 +67,7 @@ export class ServerlessScraperStack extends cdk.Stack {
                 primaryOutputDirectory: 'cdk.out',
             }),
             selfMutation: true,
+            role: adminRole,
         });
 
         pipeline.addStage(new ApplicationStage(this, 'dev'));
