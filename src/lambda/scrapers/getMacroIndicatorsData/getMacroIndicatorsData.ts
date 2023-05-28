@@ -58,7 +58,7 @@ exports.handler = async function (event: any) {
                 const columns = row.querySelectorAll('td');
                 // Can't clean the textContent here because $$eval expects browser context which doesn't
                 // have access to the node.js scope
-                return Array.from(columns, (column) => column.textContent);
+                return Array.from(columns, (column: any) => column.textContent);
             });
         });
 
