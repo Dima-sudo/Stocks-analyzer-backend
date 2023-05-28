@@ -39,7 +39,7 @@ export class ServerlessScraperStack extends cdk.Stack {
             process.env.GITHUB_BRANCH_NAME as string,
             {
                 authentication: cdk.SecretValue.secretsManager(
-                    githubCredentials.secretArn,
+                    'arn:aws:secretsmanager:eu-west-1:295594749891:secret:DbCredentials798065DE-U8gjQdJB2oto-00VrgP',
                     { jsonField: 'githubToken' }
                 ),
             }
