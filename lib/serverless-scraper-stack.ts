@@ -11,6 +11,7 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 
 import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
+import * as pipelines from 'aws-cdk-lib/pipelines';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 
@@ -271,8 +272,8 @@ export class ServerlessScraperStack extends cdk.Stack {
         //                                  Pipeline
         // ============================================================================  //
 
-        const sourceOutput = new codepipeline.Artifact();
-        const cdkBuildOutput = new codepipeline.Artifact('CdkBuildOutput');
+        // const sourceOutput = new codepipeline.Artifact();
+        // const cdkBuildOutput = new codepipeline.Artifact('CdkBuildOutput');
 
         const githubCredentials = new secretsmanager.Secret(
             this,
@@ -291,31 +292,112 @@ export class ServerlessScraperStack extends cdk.Stack {
             }
         );
 
-        const pipeline = new codepipeline.Pipeline(this, 'Pipeline', {
-            pipelineName: 'PipelinePrimary',
-            role: adminRole,
+        // const pipeline = new codepipeline.Pipeline(this, 'Pipeline', {
+        //     pipelineName: 'PipelinePrimary',
+        //     role: adminRole,
+        // });
+
+        // pipeline.addStage({
+        //     stageName: 'Source',
+        //     actions: [
+        //         new codepipeline_actions.GitHubSourceAction({
+        //             actionName: 'PullFromGithub',
+        //             output: sourceOutput, // Artifact to store the source code
+        //             oauthToken: cdk.SecretValue.secretsManager(
+        //                 githubCredentials.secretArn,
+        //                 {
+        //                     jsonField: 'githubToken',
+        //                 }
+        //             ),
+        //             owner: process.env.GITHUB_USERNAME as string,
+        //             repo: process.env.GITHUB_REPO_NAME as string,
+        //             branch: process.env.GITHUB_BRANCH_NAME as string,
+        //         }),
+        //     ],
+        // });
+
+        // const cdkBuild = new codebuild.PipelineProject(this, 'CdkBuild', {
+        //     buildSpec: codebuild.BuildSpec.fromObject({
+        //         version: '0.2',
+        //         phases: {
+        //             install: {
+        //                 commands: ['npm install'],
+        //             },
+        //             build: {
+        //                 commands: [
+        //                     'npm run build',
+        //                     'npm run test',
+        //                     'npm run cdk synth -- -o dist',
+        //                 ],
+        //             },
+        //         },
+        //         artifacts: {
+        //             'base-directory': 'dist',
+        //             files: ['**/*'],
+        //         },
+        //     }),
+        //     environment: {
+        //         buildImage: codebuild.LinuxBuildImage.STANDARD_6_0,
+        //     },
+        // });
+
+        // pipeline.addStage({
+        //     stageName: 'Build',
+        //     actions: [
+        //         new codepipeline_actions.CodeBuildAction({
+        //             actionName: 'CdkBuild',
+        //             project: cdkBuild,
+        //             input: sourceOutput,
+        //             outputs: [cdkBuildOutput],
+        //         }),
+        //     ],
+        // });
+
+        // pipeline.addStage({
+        //     stageName: 'Deploy',
+        //     actions: [
+        //         new codepipeline_actions.CloudFormationCreateUpdateStackAction({
+        //             actionName: 'CdkDeploy',
+        //             templatePath: cdkBuildOutput.atPath(
+        //                 'ServerlessScraperStack.template.json'
+        //             ),
+        //             stackName: 'ServerlessScraperStack',
+        //             adminPermissions: true,
+        //         }),
+        //     ],
+        // });
+
+        const sourceArtifact = new codepipeline.Artifact();
+        const cloudAssemblyArtifact = new codepipeline.Artifact();
+
+        const pipeline = new pipelines.CodePipeline(this, 'Pipeline', {
+            pipelineName: 'MyAppPipeline',
+            synth: new pipelines.ShellStep('Synth', {
+                input: sourceArtifact,
+                commands: ['npm ci', 'npm run build', 'npx cdk synth'],
+                primaryOutputDirectory: 'cdk.out',
+            }),
+            selfMutating: true,
         });
 
-        pipeline.addStage({
+        const sourceAction = new codepipeline_actions.GitHubSourceAction({
+            actionName: 'GitHub',
+            output: sourceArtifact,
+            oauthToken: cdk.SecretValue.secretsManager(
+                githubCredentials.secretArn,
+                { jsonField: 'githubToken' }
+            ),
+            owner: process.env.GITHUB_USERNAME as string,
+            repo: process.env.GITHUB_REPO_NAME as string,
+            branch: process.env.GITHUB_BRANCH_NAME as string,
+        });
+
+        const sourceStageOptions = {
             stageName: 'Source',
-            actions: [
-                new codepipeline_actions.GitHubSourceAction({
-                    actionName: 'PullFromGithub',
-                    output: sourceOutput, // Artifact to store the source code
-                    oauthToken: cdk.SecretValue.secretsManager(
-                        githubCredentials.secretArn,
-                        {
-                            jsonField: 'githubToken',
-                        }
-                    ),
-                    owner: process.env.GITHUB_USERNAME as string,
-                    repo: process.env.GITHUB_REPO_NAME as string,
-                    branch: process.env.GITHUB_BRANCH_NAME as string,
-                }),
-            ],
-        });
+            actions: [sourceAction],
+        };
 
-        const cdkBuild = new codebuild.PipelineProject(this, 'CdkBuild', {
+        const buildProject = new codebuild.PipelineProject(this, 'CdkBuild', {
             buildSpec: codebuild.BuildSpec.fromObject({
                 version: '0.2',
                 phases: {
@@ -340,30 +422,38 @@ export class ServerlessScraperStack extends cdk.Stack {
             },
         });
 
-        pipeline.addStage({
-            stageName: 'Build',
-            actions: [
-                new codepipeline_actions.CodeBuildAction({
-                    actionName: 'CdkBuild',
-                    project: cdkBuild,
-                    input: sourceOutput,
-                    outputs: [cdkBuildOutput],
-                }),
-            ],
+        const buildAction = new codepipeline_actions.CodeBuildAction({
+            actionName: 'CdkBuild',
+            project: buildProject,
+            input: sourceArtifact,
+            outputs: [cloudAssemblyArtifact],
         });
 
-        pipeline.addStage({
+        const buildStageOptions = {
+            stageName: 'Build',
+            actions: [buildAction],
+        };
+
+        const deployAction =
+            new codepipeline_actions.CloudFormationCreateUpdateStackAction({
+                actionName: 'CdkDeploy',
+                templatePath: cloudAssemblyArtifact.atPath(
+                    'ServerlessScraperStack.template.json'
+                ),
+                stackName: 'ServerlessScraperStack',
+                adminPermissions: true,
+            });
+
+        const deployStageOptions = {
             stageName: 'Deploy',
-            actions: [
-                new codepipeline_actions.CloudFormationCreateUpdateStackAction({
-                    actionName: 'CdkDeploy',
-                    templatePath: cdkBuildOutput.atPath(
-                        'ServerlessScraperStack.template.json'
-                    ),
-                    stackName: 'ServerlessScraperStack',
-                    adminPermissions: true,
-                }),
-            ],
-        });
+            actions: [deployAction],
+        };
+
+        // @ts-ignore
+        pipeline.addStage(sourceStageOptions);
+        // @ts-ignore
+        pipeline.addStage(buildStageOptions);
+        // @ts-ignore
+        pipeline.addStage(deployStageOptions);
     }
 }
