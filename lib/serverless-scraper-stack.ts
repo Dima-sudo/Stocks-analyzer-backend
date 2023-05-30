@@ -18,15 +18,18 @@ export class ServerlessScraperStack extends cdk.Stack {
             ...props,
         });
 
-        const adminRole = new iam.Role(this, 'ScraperLambdaRole', {
-            assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+        const adminRole = new iam.Role(this, 'CICDRole', {
+            assumedBy: new iam.CompositePrincipal(
+                new iam.ServicePrincipal('codebuild.amazonaws.com'),
+                new iam.ServicePrincipal('codedeploy.amazonaws.com'),
+                new iam.ServicePrincipal('codepipeline.amazonaws.com')
+            ),
         });
 
         adminRole.addToPolicy(
             new iam.PolicyStatement({
                 effect: iam.Effect.ALLOW,
                 resources: ['*'],
-                principals: [new iam.AnyPrincipal()],
                 actions: [
                     'secretsmanager:GetSecretValue',
                     'secretsmanager:DescribeSecret',
