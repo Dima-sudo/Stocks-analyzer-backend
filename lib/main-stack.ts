@@ -124,6 +124,7 @@ export class MainStack extends cdk.Stack {
         });
 
         // @ts-ignore
+
         const getEarningsDataLambda = new nodejs.NodejsFunction(
             this,
             ResourceNames.GET_EARNINGS_DATA,
