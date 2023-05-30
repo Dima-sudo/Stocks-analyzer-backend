@@ -53,26 +53,26 @@ export class ServerlessScraperStack extends cdk.Stack {
             }
         );
 
-        const adminRole = new iam.Role(this, 'PipelineRole', {
-            assumedBy: new iam.CompositePrincipal(
-                new iam.ServicePrincipal('codebuild.amazonaws.com'),
-                new iam.ServicePrincipal('codepipeline.amazonaws.com'),
-                new iam.ServicePrincipal('codedeploy.amazonaws.com')
-            ),
-            managedPolicies: [
-                iam.ManagedPolicy.fromAwsManagedPolicyName(
-                    'AdministratorAccess'
-                ),
-            ],
-        });
+        // const adminRole = new iam.Role(this, 'PipelineRole', {
+        //     assumedBy: new iam.CompositePrincipal(
+        //         new iam.ServicePrincipal('codebuild.amazonaws.com'),
+        //         new iam.ServicePrincipal('codepipeline.amazonaws.com'),
+        //         new iam.ServicePrincipal('codedeploy.amazonaws.com')
+        //     ),
+        //     managedPolicies: [
+        //         iam.ManagedPolicy.fromAwsManagedPolicyName(
+        //             'AdministratorAccess'
+        //         ),
+        //     ],
+        // });
 
-        const policy = new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['*'],
-            resources: ['*'],
-        });
+        // const policy = new iam.PolicyStatement({
+        //     effect: iam.Effect.ALLOW,
+        //     actions: ['*'],
+        //     resources: ['*'],
+        // });
 
-        adminRole.addToPolicy(policy);
+        // adminRole.addToPolicy(policy);
 
         const source = pipelines.CodePipelineSource.gitHub(
             `${process.env.GITHUB_USERNAME}/${process.env.GITHUB_REPO_NAME}`,
@@ -94,7 +94,7 @@ export class ServerlessScraperStack extends cdk.Stack {
                 primaryOutputDirectory: 'cdk.out',
             }),
             selfMutation: true,
-            role: adminRole,
+            // role: adminRole,
         });
 
         pipeline.addStage(new ApplicationStage(this, 'dev'));
