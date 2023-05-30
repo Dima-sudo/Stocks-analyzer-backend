@@ -59,15 +59,17 @@ export class ServerlessScraperStack extends cdk.Stack {
                 new iam.ServicePrincipal('codepipeline.amazonaws.com'),
                 new iam.ServicePrincipal('codedeploy.amazonaws.com')
             ),
+            managedPolicies: [
+                iam.ManagedPolicy.fromAwsManagedPolicyName(
+                    'AdministratorAccess'
+                ),
+            ],
         });
 
         const policy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
-            actions: [
-                'secretsmanager:GetSecretValue',
-                'secretsmanager:DescribeSecret',
-            ],
-            resources: [githubCredentials.secretArn],
+            actions: ['*'],
+            resources: ['*'],
         });
 
         adminRole.addToPolicy(policy);
