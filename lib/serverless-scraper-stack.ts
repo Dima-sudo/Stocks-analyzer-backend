@@ -76,7 +76,7 @@ export class ServerlessScraperStack extends cdk.Stack {
 
         const source = pipelines.CodePipelineSource.gitHub(
             'Dima-sudo/Stocks-analyzer-backend',
-            process.env.GITHUB_BRANCH_NAME as string,
+            'master',
             {
                 authentication: cdk.SecretValue.secretsManager(
                     'arn:aws:secretsmanager:eu-west-1:295594749891:secret:githubToken-uDa3lq',
