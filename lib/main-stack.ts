@@ -22,6 +22,8 @@ import {
     DATABASE,
 } from '../src/aws/enums';
 
+require('dotenv').config();
+
 export class MainStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, {
