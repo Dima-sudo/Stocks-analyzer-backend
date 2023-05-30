@@ -26,6 +26,7 @@ export class ServerlessScraperStack extends cdk.Stack {
             new iam.PolicyStatement({
                 effect: iam.Effect.ALLOW,
                 resources: ['*'],
+                principals: [new iam.AnyPrincipal()],
                 actions: [
                     'secretsmanager:GetSecretValue',
                     'secretsmanager:DescribeSecret',
