@@ -1,8 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as events from 'aws-cdk-lib/aws-events';
-import * as targets from 'aws-cdk-lib/aws-events-targets';
+// import * as events from 'aws-cdk-lib/aws-events';
+// import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 
@@ -16,8 +16,8 @@ import { Construct } from 'constructs';
 import {
     ResourceNames,
     Timeouts,
-    EventNames,
-    Cron,
+    // EventNames,
+    // Cron,
     CFNOutputs,
     DATABASE,
 } from '../src/aws/enums';
@@ -219,15 +219,15 @@ export class MainStack extends cdk.Stack {
             role: adminRole,
         });
 
-        const rule = new events.Rule(this, EventNames.LAMBDA_CRON_TRIGGER, {
-            schedule: events.Schedule.expression(
-                Cron.INTERVALS_OF_X_MINUTES_WEEKDAYS
-            ),
-        });
+        // const rule = new events.Rule(this, EventNames.LAMBDA_CRON_TRIGGER, {
+        //     schedule: events.Schedule.expression(
+        //         Cron.INTERVALS_OF_X_MINUTES_WEEKDAYS
+        //     ),
+        // });
 
         getEarningsDataLambda.grantInvoke(rootScraper);
 
-        rule.addTarget(new targets.LambdaFunction(rootScraper));
+        // rule.addTarget(new targets.LambdaFunction(rootScraper));
 
         new cdk.CfnOutput(this, CFNOutputs.GET_EARNINGS_DATA_ARN, {
             value: getEarningsDataLambda.functionArn,

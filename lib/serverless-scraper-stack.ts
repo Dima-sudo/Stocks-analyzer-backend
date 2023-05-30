@@ -1,6 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as pipelines from 'aws-cdk-lib/pipelines';
-// import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 // import * as iam from 'aws-cdk-lib/aws-iam';
 
 import { Construct } from 'constructs';
@@ -36,22 +36,18 @@ export class ServerlessScraperStack extends cdk.Stack {
         //         ],
         //     })
         // );
-        // const githubCredentials = new secretsmanager.Secret(
-        //     this,
-        //     'githubCredentials',
-        //     {
-        //         description: 'Github User credentials',
-        //         generateSecretString: {
-        //             secretStringTemplate: JSON.stringify({
-        //                 owner: process.env.GITHUB_USERNAME,
-        //                 repo: process.env.GITHUB_REPO_NAME,
-        //                 branch: process.env.GITHUB_BRANCH_NAME,
-        //                 githubToken: process.env.GITHUB_TOKEN,
-        //             }),
-        //             generateStringKey: 'secretIdentifier',
-        //         },
-        //     }
-        // );
+        new secretsmanager.Secret(this, 'githubCredentialsTest', {
+            description: 'Github User credentials',
+            generateSecretString: {
+                secretStringTemplate: JSON.stringify({
+                    owner: process.env.GITHUB_USERNAME,
+                    repo: process.env.GITHUB_REPO_NAME,
+                    branch: process.env.GITHUB_BRANCH_NAME,
+                    githubToken: process.env.GITHUB_TOKEN,
+                }),
+                generateStringKey: 'secretIdentifier',
+            },
+        });
 
         // const adminRole = new iam.Role(this, 'PipelineRole', {
         //     assumedBy: new iam.CompositePrincipal(
