@@ -18,25 +18,24 @@ export class ServerlessScraperStack extends cdk.Stack {
             ...props,
         });
 
-        const adminRole = new iam.Role(this, 'CICDRole', {
-            assumedBy: new iam.CompositePrincipal(
-                new iam.ServicePrincipal('codebuild.amazonaws.com'),
-                new iam.ServicePrincipal('codedeploy.amazonaws.com'),
-                new iam.ServicePrincipal('codepipeline.amazonaws.com')
-            ),
-        });
+        // const adminRole = new iam.Role(this, 'CICDRole', {
+        //     assumedBy: new iam.CompositePrincipal(
+        //         new iam.ServicePrincipal('codebuild.amazonaws.com'),
+        //         new iam.ServicePrincipal('codedeploy.amazonaws.com'),
+        //         new iam.ServicePrincipal('codepipeline.amazonaws.com')
+        //     ),
+        // });
 
-        adminRole.addToPolicy(
-            new iam.PolicyStatement({
-                effect: iam.Effect.ALLOW,
-                resources: ['*'],
-                actions: [
-                    'secretsmanager:GetSecretValue',
-                    'secretsmanager:DescribeSecret',
-                ],
-            })
-        );
-
+        // adminRole.addToPolicy(
+        //     new iam.PolicyStatement({
+        //         effect: iam.Effect.ALLOW,
+        //         resources: ['*'],
+        //         actions: [
+        //             'secretsmanager:GetSecretValue',
+        //             'secretsmanager:DescribeSecret',
+        //         ],
+        //     })
+        // );
         const githubCredentials = new secretsmanager.Secret(
             this,
             'githubCredentials',
@@ -53,6 +52,25 @@ export class ServerlessScraperStack extends cdk.Stack {
                 },
             }
         );
+
+        const adminRole = new iam.Role(this, 'PipelineRole', {
+            assumedBy: new iam.CompositePrincipal(
+                new iam.ServicePrincipal('codebuild.amazonaws.com'),
+                new iam.ServicePrincipal('codepipeline.amazonaws.com'),
+                new iam.ServicePrincipal('codedeploy.amazonaws.com')
+            ),
+        });
+
+        const policy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: [
+                'secretsmanager:GetSecretValue',
+                'secretsmanager:DescribeSecret',
+            ],
+            resources: [githubCredentials.secretArn],
+        });
+
+        adminRole.addToPolicy(policy);
 
         const source = pipelines.CodePipelineSource.gitHub(
             `${process.env.GITHUB_USERNAME}/${process.env.GITHUB_REPO_NAME}`,
